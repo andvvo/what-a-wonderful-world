@@ -1,21 +1,75 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import Map, { Marker, type MapMouseEvent } from "react-map-gl/mapbox";
+import Image from "next/image";
+import Map, { Marker, Popup, type MapMouseEvent } from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
 import Pin from "../components/pin";
 
-type Pin = {
+type PinData = {
+  id: string;
+  latitude: number;
+  longitude: number;
+  description: string;
+  imageUrl: string;
+};
+
+type NewPinLocation = {
   latitude: number;
   longitude: number;
 };
 
 export default function HomePage() {
-  const [pins, setPins] = useState<Pin[]>([]);
+  const [pins, setPins] = useState<PinData[]>([]);
+  const [newPinLocation, setNewPinLocation] = useState<NewPinLocation | null>(
+    null
+  );
+  const [selectedPin, setSelectedPin] = useState<PinData | null>(null);
+  const [newDescription, setNewDescription] = useState("");
+  const [newImageUrl, setNewImageUrl] = useState("");
 
   const handleMapClick = useCallback((event: MapMouseEvent) => {
     const { lng, lat } = event.lngLat;
-    setPins((curr) => [...curr, { longitude: lng, latitude: lat }]);
+    setSelectedPin(null);
+    setNewPinLocation({ longitude: lng, latitude: lat });
+    setNewDescription("");
+    setNewImageUrl("");
+  }, []);
+
+  const handleCreatePin = useCallback(() => {
+    if (newPinLocation && newDescription.trim()) {
+      const newPin: PinData = {
+        id: crypto.randomUUID(),
+        latitude: newPinLocation.latitude,
+        longitude: newPinLocation.longitude,
+        description: newDescription.trim(),
+        imageUrl: newImageUrl.trim(),
+      };
+      setPins((curr) => [...curr, newPin]);
+      setNewPinLocation(null);
+      setNewDescription("");
+      setNewImageUrl("");
+    }
+  }, [newPinLocation, newDescription, newImageUrl]);
+
+  const handleCancelNewPin = useCallback(() => {
+    setNewPinLocation(null);
+    setNewDescription("");
+    setNewImageUrl("");
+  }, []);
+
+  const handlePinClick = useCallback((pin: PinData) => {
+    setNewPinLocation(null);
+    setSelectedPin(pin);
+  }, []);
+
+  const handleDeletePin = useCallback((pinId: string) => {
+    setPins((curr) => curr.filter((p) => p.id !== pinId));
+    setSelectedPin(null);
+  }, []);
+
+  const handleClosePopup = useCallback(() => {
+    setSelectedPin(null);
   }, []);
 
   return (
@@ -30,16 +84,107 @@ export default function HomePage() {
       mapStyle="mapbox://styles/mapbox/standard"
       onClick={handleMapClick}
     >
-      {pins.map((pin, index) => (
+      {pins.map((pin) => (
         <Marker
-          key={`marker-${index}`}
+          key={pin.id}
           longitude={pin.longitude}
           latitude={pin.latitude}
           anchor="bottom"
+          onClick={(e) => {
+            e.originalEvent.stopPropagation();
+            handlePinClick(pin);
+          }}
         >
           <Pin />
         </Marker>
       ))}
+
+      {newPinLocation && (
+        <Popup
+          longitude={newPinLocation.longitude}
+          latitude={newPinLocation.latitude}
+          anchor="bottom"
+          onClose={handleCancelNewPin}
+          closeOnClick={false}
+          className="min-w-[300px]"
+        >
+          <div className="p-2 min-w-[250px]">
+            <h3 className="m-0 mb-3 text-base font-bold">Add New Pin</h3>
+            <div className="mb-3">
+              <label className="block mb-1 text-sm">Description *</label>
+              <textarea
+                value={newDescription}
+                onChange={(e) => setNewDescription(e.target.value)}
+                placeholder="Enter a description..."
+                className="w-full p-2 rounded border border-gray-300 resize-y min-h-[60px] text-sm"
+              />
+            </div>
+            <div className="mb-3">
+              <label className="block mb-1 text-sm">Image URL</label>
+              <input
+                type="url"
+                value={newImageUrl}
+                onChange={(e) => setNewImageUrl(e.target.value)}
+                placeholder="https://example.com/image.jpg"
+                className="w-full p-2 rounded border border-gray-300 text-sm"
+              />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={handleCancelNewPin}
+                className="px-4 py-2 rounded border border-gray-300 bg-white cursor-pointer text-sm hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreatePin}
+                disabled={!newDescription.trim()}
+                className={`px-4 py-2 rounded border-none text-white text-sm ${
+                  newDescription.trim()
+                    ? "bg-blue-500 cursor-pointer hover:bg-blue-600"
+                    : "bg-gray-300 cursor-not-allowed"
+                }`}
+              >
+                Add Pin
+              </button>
+            </div>
+          </div>
+        </Popup>
+      )}
+
+      {selectedPin && (
+        <Popup
+          longitude={selectedPin.longitude}
+          latitude={selectedPin.latitude}
+          anchor="bottom"
+          onClose={handleClosePopup}
+          closeOnClick={false}
+          className="min-w-[300px]"
+        >
+          <div className="p-2 min-w-[250px] max-w-[300px]">
+            {selectedPin.imageUrl && (
+              <div className="relative w-full h-[150px] mb-3">
+                <Image
+                  src={selectedPin.imageUrl}
+                  alt="Pin"
+                  fill
+                  className="object-cover rounded"
+                  unoptimized
+                />
+              </div>
+            )}
+            <p className="m-0 mb-3 text-sm leading-relaxed">
+              {selectedPin.description}
+            </p>
+            <button
+              onClick={() => handleDeletePin(selectedPin.id)}
+              className="w-full px-4 py-2 rounded border-none bg-red-500 text-white cursor-pointer text-sm hover:bg-red-600"
+            >
+              Delete Pin
+            </button>
+          </div>
+        </Popup>
+      )}
     </Map>
   );
 }
