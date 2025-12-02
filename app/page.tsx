@@ -4,7 +4,7 @@ import { useState, useCallback } from "react";
 import Image from "next/image";
 import Map, { Marker, Popup, type MapMouseEvent } from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
-import Pin from "../components/pin";
+import Pin from "@/components/pin";
 
 type PinData = {
   id: string;
