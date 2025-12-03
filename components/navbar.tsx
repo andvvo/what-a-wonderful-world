@@ -7,7 +7,7 @@ export default function Navbar() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 mt-4 bg-transparent">
+    <nav className="fixed top-0 left-0 right-0 z-5 mt-4 bg-transparent">
       <div className="flex justify-center items-center gap-8 py-4">
         <Link
           href="/"
