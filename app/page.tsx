@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Image from "next/image";
 import Map, { Marker, Popup, type MapMouseEvent } from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
 import Pin from "@/components/pin";
+import { supabase } from "@/lib/supabase";
 
 type PinData = {
   id: string;
@@ -28,6 +29,30 @@ export default function HomePage() {
   const [newDescription, setNewDescription] = useState("");
   const [newImageUrl, setNewImageUrl] = useState("");
 
+  useEffect(() => {
+    async function fetchPins() {
+      const { data, error } = await supabase
+        .from("pins")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Error fetching pins:", error);
+      } else if (data) {
+        setPins(
+          data.map((pin) => ({
+            id: pin.id,
+            latitude: pin.latitude,
+            longitude: pin.longitude,
+            description: pin.description,
+            imageUrl: pin.image_url || "",
+          }))
+        );
+      }
+    }
+    fetchPins();
+  }, []);
+
   const handleMapClick = useCallback((event: MapMouseEvent) => {
     const { lng, lat } = event.lngLat;
     setSelectedPin(null);
@@ -36,16 +61,31 @@ export default function HomePage() {
     setNewImageUrl("");
   }, []);
 
-  const handleCreatePin = useCallback(() => {
+  const handleCreatePin = useCallback(async () => {
     if (newPinLocation && newDescription.trim()) {
-      const newPin: PinData = {
-        id: crypto.randomUUID(),
-        latitude: newPinLocation.latitude,
-        longitude: newPinLocation.longitude,
-        description: newDescription.trim(),
-        imageUrl: newImageUrl.trim(),
-      };
-      setPins((curr) => [...curr, newPin]);
+      const { data, error } = await supabase
+        .from("pins")
+        .insert({
+          latitude: newPinLocation.latitude,
+          longitude: newPinLocation.longitude,
+          description: newDescription.trim(),
+          image_url: newImageUrl.trim() || null,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Error creating pin:", error);
+      } else if (data) {
+        const newPin: PinData = {
+          id: data.id,
+          latitude: data.latitude,
+          longitude: data.longitude,
+          description: data.description,
+          imageUrl: data.image_url || "",
+        };
+        setPins((curr) => [newPin, ...curr]);
+      }
       setNewPinLocation(null);
       setNewDescription("");
       setNewImageUrl("");
@@ -63,9 +103,15 @@ export default function HomePage() {
     setSelectedPin(pin);
   }, []);
 
-  const handleDeletePin = useCallback((pinId: string) => {
-    setPins((curr) => curr.filter((p) => p.id !== pinId));
-    setSelectedPin(null);
+  const handleDeletePin = useCallback(async (pinId: string) => {
+    const { error } = await supabase.from("pins").delete().eq("id", pinId);
+
+    if (error) {
+      console.error("Error deleting pin:", error);
+    } else {
+      setPins((curr) => curr.filter((p) => p.id !== pinId));
+      setSelectedPin(null);
+    }
   }, []);
 
   const handleClosePopup = useCallback(() => {
