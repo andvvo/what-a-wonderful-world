@@ -11,7 +11,7 @@ import Map, {
 } from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
 import Pin from "@/components/pin";
-import { PinData, fetchPins, createPin, deletePin } from "@/lib/pins";
+import { PinData, PinColor, PIN_COLORS, fetchPins, createPin, deletePin } from "@/lib/pins";
 
 const SearchBox = dynamic(
   () => import("@mapbox/search-js-react").then((mod) => mod.SearchBox),
@@ -32,6 +32,7 @@ export default function HomePage() {
   const [selectedPin, setSelectedPin] = useState<PinData | null>(null);
   const [newDescription, setNewDescription] = useState("");
   const [newImageUrl, setNewImageUrl] = useState("");
+  const [newPinColor, setNewPinColor] = useState<PinColor>("red");
 
   useEffect(() => {
     async function loadPins() {
@@ -47,6 +48,7 @@ export default function HomePage() {
     setNewPinLocation({ longitude: lng, latitude: lat });
     setNewDescription("");
     setNewImageUrl("");
+    setNewPinColor("red");
   }, []);
 
   const handleCreatePin = useCallback(async () => {
@@ -56,6 +58,7 @@ export default function HomePage() {
         longitude: newPinLocation.longitude,
         description: newDescription.trim(),
         imageUrl: newImageUrl.trim() || undefined,
+        color: newPinColor,
       });
 
       if (newPin) {
@@ -64,13 +67,15 @@ export default function HomePage() {
       setNewPinLocation(null);
       setNewDescription("");
       setNewImageUrl("");
+      setNewPinColor("red");
     }
-  }, [newPinLocation, newDescription, newImageUrl]);
+  }, [newPinLocation, newDescription, newImageUrl, newPinColor]);
 
   const handleCancelNewPin = useCallback(() => {
     setNewPinLocation(null);
     setNewDescription("");
     setNewImageUrl("");
+    setNewPinColor("red");
   }, []);
 
   const handlePinClick = useCallback((pin: PinData) => {
@@ -156,7 +161,7 @@ export default function HomePage() {
               handlePinClick(pin);
             }}
           >
-            <Pin />
+            <Pin color={pin.color} />
           </Marker>
         ))}
 
@@ -189,6 +194,25 @@ export default function HomePage() {
                   placeholder="https://example.com/image.jpg"
                   className="w-full p-2 rounded border border-gray-300 text-sm"
                 />
+              </div>
+              <div className="mb-3">
+                <label className="block mb-1 text-sm">Pin Color</label>
+                <div className="flex gap-2 flex-wrap">
+                  {PIN_COLORS.map((colorOption) => (
+                    <button
+                      key={colorOption.value}
+                      type="button"
+                      onClick={() => setNewPinColor(colorOption.value)}
+                      className={`w-8 h-8 rounded-full border-2 transition-all ${
+                        newPinColor === colorOption.value
+                          ? "border-gray-800 scale-110"
+                          : "border-gray-300 hover:border-gray-400"
+                      }`}
+                      style={{ backgroundColor: colorOption.hex }}
+                      title={colorOption.label}
+                    />
+                  ))}
+                </div>
               </div>
               <div className="flex gap-2 justify-end">
                 <button

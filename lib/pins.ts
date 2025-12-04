@@ -1,5 +1,16 @@
 import { supabase } from "./supabase";
 
+export type PinColor = "red" | "blue" | "green" | "yellow" | "purple" | "orange";
+
+export const PIN_COLORS: { value: PinColor; label: string; hex: string }[] = [
+  { value: "red", label: "Red", hex: "#EF4444" },
+  { value: "blue", label: "Blue", hex: "#3B82F6" },
+  { value: "green", label: "Green", hex: "#22C55E" },
+  { value: "yellow", label: "Yellow", hex: "#EAB308" },
+  { value: "purple", label: "Purple", hex: "#A855F7" },
+  { value: "orange", label: "Orange", hex: "#F97316" },
+];
+
 export type PinData = {
   id: string;
   latitude: number;
@@ -7,6 +18,7 @@ export type PinData = {
   description: string;
   imageUrl: string;
   createdAt: string;
+  color: PinColor;
 };
 
 export async function fetchPins(): Promise<PinData[]> {
@@ -27,6 +39,7 @@ export async function fetchPins(): Promise<PinData[]> {
     description: pin.description,
     imageUrl: pin.image_url || "",
     createdAt: pin.created_at,
+    color: pin.color || "red",
   }));
 }
 
@@ -46,6 +59,7 @@ export async function createPin(pin: {
   longitude: number;
   description: string;
   imageUrl?: string;
+  color?: PinColor;
 }): Promise<PinData | null> {
   const { data, error } = await supabase
     .from("pins")
@@ -54,6 +68,7 @@ export async function createPin(pin: {
       longitude: pin.longitude,
       description: pin.description,
       image_url: pin.imageUrl || null,
+      color: pin.color || "red",
     })
     .select()
     .single();
@@ -70,5 +85,6 @@ export async function createPin(pin: {
     description: data.description,
     imageUrl: data.image_url || "",
     createdAt: data.created_at,
+    color: data.color || "red",
   };
 }
