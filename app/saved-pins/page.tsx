@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -15,6 +15,68 @@ export default function SavedPinsPage() {
   const [pins, setPins] = useState<PinData[]>([]);
   const [loading, setLoading] = useState(true);
   const [colorFilter, setColorFilter] = useState<Set<PinColor>>(new Set());
+  const [editingColor, setEditingColor] = useState<PinColor | null>(null);
+  const [editLabel, setEditLabel] = useState("");
+  const [customLabels, setCustomLabels] = useState<Record<PinColor, string>>(
+    () => {
+      if (typeof window !== "undefined") {
+        const saved = localStorage.getItem("pinColorLabels");
+        if (saved) return JSON.parse(saved);
+      }
+      return {} as Record<PinColor, string>;
+    }
+  );
+  const editInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editingColor && editInputRef.current) {
+      editInputRef.current.focus();
+    }
+  }, [editingColor]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && Object.keys(customLabels).length > 0) {
+      localStorage.setItem("pinColorLabels", JSON.stringify(customLabels));
+    }
+  }, [customLabels]);
+
+  const getColorLabel = (color: PinColor) => {
+    return (
+      customLabels[color] ||
+      PIN_COLORS.find((c) => c.value === color)?.label ||
+      color
+    );
+  };
+
+  const handleStartEdit = (e: React.MouseEvent, color: PinColor) => {
+    e.stopPropagation();
+    setEditingColor(color);
+    setEditLabel(getColorLabel(color));
+  };
+
+  const handleSaveEdit = () => {
+    if (editingColor && editLabel.trim()) {
+      setCustomLabels((prev) => ({
+        ...prev,
+        [editingColor]: editLabel.trim(),
+      }));
+    }
+    setEditingColor(null);
+    setEditLabel("");
+  };
+
+  const handleCancelEdit = () => {
+    setEditingColor(null);
+    setEditLabel("");
+  };
+
+  const handleEditKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleSaveEdit();
+    } else if (e.key === "Escape") {
+      handleCancelEdit();
+    }
+  };
 
   const toggleColorFilter = (color: PinColor) => {
     setColorFilter((prev) => {
@@ -95,21 +157,63 @@ export default function SavedPinsPage() {
               All Colors
             </button>
             {PIN_COLORS.map((colorOption) => (
-              <button
-                key={colorOption.value}
-                onClick={() => toggleColorFilter(colorOption.value)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  colorFilter.has(colorOption.value)
-                    ? "bg-gray-800 text-white"
-                    : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
-                }`}
-              >
-                <span
-                  className="w-4 h-4 rounded-full"
-                  style={{ backgroundColor: colorOption.hex }}
-                />
-                {colorOption.label}
-              </button>
+              <div key={colorOption.value} className="relative group">
+                {editingColor === colorOption.value ? (
+                  <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-white border border-gray-300">
+                    <span
+                      className="w-4 h-4 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: colorOption.hex }}
+                    />
+                    <input
+                      ref={editInputRef}
+                      type="text"
+                      value={editLabel}
+                      onChange={(e) => setEditLabel(e.target.value)}
+                      onKeyDown={handleEditKeyDown}
+                      onBlur={handleSaveEdit}
+                      className="w-20 px-1 py-1 text-sm border-none outline-none bg-transparent"
+                    />
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => toggleColorFilter(colorOption.value)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                      colorFilter.has(colorOption.value)
+                        ? "bg-gray-800 text-white"
+                        : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+                    }`}
+                  >
+                    <span
+                      className="w-4 h-4 rounded-full"
+                      style={{ backgroundColor: colorOption.hex }}
+                    />
+                    {getColorLabel(colorOption.value)}
+                    <span
+                      onClick={(e) => handleStartEdit(e, colorOption.value)}
+                      className={`ml-1 opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-pointer hover:text-blue-500 ${
+                        colorFilter.has(colorOption.value)
+                          ? "hover:text-blue-300"
+                          : ""
+                      }`}
+                      title="Edit label"
+                    >
+                      <svg
+                        className="w-3.5 h-3.5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                        />
+                      </svg>
+                    </span>
+                  </button>
+                )}
+              </div>
             ))}
           </div>
         </div>
