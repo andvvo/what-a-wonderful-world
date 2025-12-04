@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import Map, {
@@ -11,7 +12,14 @@ import Map, {
 } from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
 import Pin from "@/components/pin";
-import { PinData, PinColor, PIN_COLORS, fetchPins, createPin, deletePin } from "@/lib/pins";
+import {
+  PinData,
+  PinColor,
+  PIN_COLORS,
+  fetchPins,
+  createPin,
+  deletePin,
+} from "@/lib/pins";
 
 const SearchBox = dynamic(
   () => import("@mapbox/search-js-react").then((mod) => mod.SearchBox),
@@ -25,6 +33,7 @@ type NewPinLocation = {
 
 export default function HomePage() {
   const mapRef = useRef<MapRef>(null);
+  const searchParams = useSearchParams();
   const [pins, setPins] = useState<PinData[]>([]);
   const [newPinLocation, setNewPinLocation] = useState<NewPinLocation | null>(
     null
@@ -33,6 +42,29 @@ export default function HomePage() {
   const [newDescription, setNewDescription] = useState("");
   const [newImageUrl, setNewImageUrl] = useState("");
   const [newPinColor, setNewPinColor] = useState<PinColor>("red");
+
+  const getInitialViewState = () => {
+    const lat = searchParams.get("lat");
+    const lng = searchParams.get("lng");
+    if (lat && lng) {
+      const latitude = parseFloat(lat);
+      const longitude = parseFloat(lng);
+      if (!isNaN(latitude) && !isNaN(longitude)) {
+        return {
+          longitude,
+          latitude,
+          zoom: 17,
+        };
+      }
+    }
+    return {
+      longitude: -122.4,
+      latitude: 37.8,
+      zoom: 14,
+    };
+  };
+
+  const initialViewState = getInitialViewState();
 
   useEffect(() => {
     async function loadPins() {
@@ -141,11 +173,7 @@ export default function HomePage() {
       <Map
         ref={mapRef}
         mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}
-        initialViewState={{
-          longitude: -122.4,
-          latitude: 37.8,
-          zoom: 14,
-        }}
+        initialViewState={initialViewState}
         style={{ width: "100%", height: "100%" }}
         mapStyle="mapbox://styles/mapbox/standard"
         onClick={handleMapClick}

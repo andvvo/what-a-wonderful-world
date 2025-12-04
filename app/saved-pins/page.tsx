@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   PinData,
   PinColor,
@@ -12,6 +13,7 @@ import {
 } from "@/lib/pins";
 
 export default function SavedPinsPage() {
+  const router = useRouter();
   const [pins, setPins] = useState<PinData[]>([]);
   const [loading, setLoading] = useState(true);
   const [colorFilter, setColorFilter] = useState<Set<PinColor>>(new Set());
@@ -113,6 +115,10 @@ export default function SavedPinsPage() {
     if (success) {
       setPins((curr) => curr.filter((p) => p.id !== pinId));
     }
+  };
+
+  const navigateToPin = (pin: PinData) => {
+    router.push(`/?lat=${pin.latitude}&lng=${pin.longitude}`);
   };
 
   if (loading) {
@@ -246,7 +252,8 @@ export default function SavedPinsPage() {
             {filteredPins.map((pin) => (
               <div
                 key={pin.id}
-                className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-shadow"
+                onClick={() => navigateToPin(pin)}
+                className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
               >
                 {pin.imageUrl ? (
                   <div className="relative w-full h-48">
@@ -317,7 +324,10 @@ export default function SavedPinsPage() {
                     </p>
                   )}
                   <button
-                    onClick={() => handleDeletePin(pin.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeletePin(pin.id);
+                    }}
                     className="w-full px-4 py-2 rounded-lg border border-red-500 text-red-500 hover:bg-red-50 transition-colors text-sm"
                   >
                     Delete Pin
